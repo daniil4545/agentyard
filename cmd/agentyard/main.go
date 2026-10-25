@@ -7,15 +7,19 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/daniil4545/agentyard/internal/agent"
 	"github.com/daniil4545/agentyard/internal/config"
 	"github.com/daniil4545/agentyard/internal/github"
+	"github.com/daniil4545/agentyard/internal/panel"
 	"github.com/daniil4545/agentyard/internal/state"
 	"github.com/daniil4545/agentyard/internal/workspace"
 	"github.com/daniil4545/agentyard/internal/yard"
@@ -33,7 +37,8 @@ func run() error {
 	once := flag.Bool("once", false, "make one pass and exit")
 	flag.Parse()
 
-	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	recent := panel.NewLog(300)
+	log := slog.New(slog.NewTextHandler(io.MultiWriter(os.Stdout, recent), nil))
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
@@ -55,10 +60,12 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("bot identity: %w", err)
 	}
-	store, err := state.Load(filepath.Join(cfg.WorkDir, "state.json"))
+	statePath := filepath.Join(cfg.WorkDir, "state.json")
+	store, err := state.Load(statePath)
 	if err != nil {
 		return fmt.Errorf("state: %w", err)
 	}
+	health := panel.NewHealth(time.Now())
 	y := &yard.Yard{
 		Config: cfg,
 		GitHub: gh,
@@ -66,11 +73,27 @@ func run() error {
 		Agents: agent.CLI{},
 		State:  store,
 		Log:    log,
+		Passed: health.Passed,
 	}
 	log.Info("agentyard started", "bot", name, "owner", cfg.Owner, "repos", len(cfg.Repos), "interval", cfg.Interval)
 	if *once {
 		y.Pass(ctx)
 		return nil
+	}
+	if cfg.Panel != "" {
+		// the panel reads state.json from disk, so it shares no memory with the loop
+		srv := &http.Server{
+			Addr:              cfg.Panel,
+			Handler:           &panel.Panel{StatePath: statePath, Health: health, Log: recent, Bot: name, Now: time.Now, Logger: log},
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("panel stopped", "addr", cfg.Panel, "err", err)
+			}
+		}()
+		defer func() { _ = srv.Close() }() // the process exits right after
+		log.Info("panel listening", "addr", cfg.Panel)
 	}
 	y.Run(ctx)
 	return nil

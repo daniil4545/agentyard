@@ -10,6 +10,9 @@ services:
       AGENTYARD_APP_KEY_B64: ${AGENTYARD_APP_KEY_B64:?set through envkey}
       # Optional logins; empty means that agent is not used.
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+    ports:
+      # admin panel, local only
+      - 127.0.0.1:8080:8080
     volumes:
       - ./agentyard.toml:/etc/agentyard/agentyard.toml:ro
       - work:/work

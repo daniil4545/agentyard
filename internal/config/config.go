@@ -25,11 +25,13 @@ type Config struct {
 	Timeout  time.Duration `toml:"timeout"`
 	// LimitPause is how long an agent rests after its plan ran out, when the provider gave
 	// no time of its own.
-	LimitPause time.Duration     `toml:"limit_pause"`
-	WorkDir    string            `toml:"work_dir"`
-	Agent      string            `toml:"agent"`
-	Models     map[string]string `toml:"models"`
-	Repos      []Repo            `toml:"repos"`
+	LimitPause time.Duration `toml:"limit_pause"`
+	WorkDir    string        `toml:"work_dir"`
+	// Panel is the listen address of the admin page; empty turns it off.
+	Panel  string            `toml:"panel"`
+	Agent  string            `toml:"agent"`
+	Models map[string]string `toml:"models"`
+	Repos  []Repo            `toml:"repos"`
 }
 
 type Repo struct {
@@ -45,6 +47,7 @@ func Load(path string) (Config, error) {
 		Timeout:    time.Hour,
 		LimitPause: time.Hour,
 		WorkDir:    "/work",
+		Panel:      ":8080",
 		Agent:      OpenCode,
 	}
 	if _, err := toml.DecodeFile(path, &cfg); err != nil {

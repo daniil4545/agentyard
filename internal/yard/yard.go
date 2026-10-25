@@ -50,6 +50,8 @@ type Yard struct {
 	Log    *slog.Logger
 	// Clock replaces time.Now in tests.
 	Clock func() time.Time
+	// Passed, when set, hears the end of every pass.
+	Passed func(time.Time)
 }
 
 const leftoverMessage = "chore: commit changes the agent left uncommitted"
@@ -77,6 +79,9 @@ func (y *Yard) Pass(ctx context.Context) {
 		if err := y.passRepo(ctx, repo); err != nil {
 			y.Log.Error("pass failed", "repo", repo.Name, "err", err)
 		}
+	}
+	if y.Passed != nil {
+		y.Passed(y.now())
 	}
 }
 

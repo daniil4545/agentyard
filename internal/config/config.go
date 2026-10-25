@@ -19,14 +19,17 @@ const (
 
 type Config struct {
 	// Owner is the GitHub login whose labels and comments the runner obeys.
-	Owner    string            `toml:"owner"`
-	Label    string            `toml:"label"`
-	Interval time.Duration     `toml:"interval"`
-	Timeout  time.Duration     `toml:"timeout"`
-	WorkDir  string            `toml:"work_dir"`
-	Agent    string            `toml:"agent"`
-	Models   map[string]string `toml:"models"`
-	Repos    []Repo            `toml:"repos"`
+	Owner    string        `toml:"owner"`
+	Label    string        `toml:"label"`
+	Interval time.Duration `toml:"interval"`
+	Timeout  time.Duration `toml:"timeout"`
+	// LimitPause is how long an agent rests after its plan ran out, when the provider gave
+	// no time of its own.
+	LimitPause time.Duration     `toml:"limit_pause"`
+	WorkDir    string            `toml:"work_dir"`
+	Agent      string            `toml:"agent"`
+	Models     map[string]string `toml:"models"`
+	Repos      []Repo            `toml:"repos"`
 }
 
 type Repo struct {
@@ -37,11 +40,12 @@ type Repo struct {
 
 func Load(path string) (Config, error) {
 	cfg := Config{
-		Label:    "agent",
-		Interval: time.Minute,
-		Timeout:  time.Hour,
-		WorkDir:  "/work",
-		Agent:    OpenCode,
+		Label:      "agent",
+		Interval:   time.Minute,
+		Timeout:    time.Hour,
+		LimitPause: time.Hour,
+		WorkDir:    "/work",
+		Agent:      OpenCode,
 	}
 	if _, err := toml.DecodeFile(path, &cfg); err != nil {
 		return Config{}, fmt.Errorf("read %s: %w", path, err)

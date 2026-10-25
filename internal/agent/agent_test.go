@@ -2,10 +2,12 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/daniil4545/agentyard/internal/config"
 )
@@ -74,6 +76,48 @@ func TestParse(t *testing.T) {
 				t.Fatalf("got %+v, want session %q text %q", res, tc.session, tc.text)
 			}
 		})
+	}
+}
+
+func TestLimitErrors(t *testing.T) {
+	cases := []struct {
+		name  string
+		err   error
+		retry time.Duration
+	}{
+		{"opencode free tier", func() error {
+			_, err := parseOpenCode([]byte(`{"type":"error","sessionID":"s","error":{"type":"provider.free-limit","message":"Free usage exceeded, subscribe to Go","status":429,"retryAfterMs":90000}}`))
+			return err
+		}(), 90 * time.Second},
+		{"opencode plain 429", func() error {
+			_, err := parseOpenCode([]byte(`{"type":"error","error":{"type":"provider.unknown","message":"slow down","status":429}}`))
+			return err
+		}(), 0},
+		{"claude usage limit", func() error {
+			_, err := parseClaude([]byte(`{"type":"result","is_error":true,"result":"Claude AI usage limit reached|1792940000","session_id":"c"}`))
+			return err
+		}(), 0},
+		{"codex usage limit", func() error {
+			_, err := parseCodex([]byte(`{"type":"turn.failed","error":{"message":"You've hit your usage limit"}}`), "", "t")
+			return err
+		}(), 0},
+		{"limit only in the CLI error", func() error {
+			_, err := settle(config.OpenCode, nil, errors.New("opencode: exit status 1: 429 Too Many Requests"), parseOpenCode)
+			return err
+		}(), 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			limit, ok := errors.AsType[*LimitError](tc.err)
+			if !ok || limit.RetryAfter != tc.retry {
+				t.Fatalf("err = %v, want a limit error with retry %v", tc.err, tc.retry)
+			}
+		})
+	}
+	if _, err := parseOpenCode(readFile(t, "opencode-error.jsonl")); err == nil {
+		t.Fatal("an expired key must fail")
+	} else if _, ok := errors.AsType[*LimitError](err); ok {
+		t.Fatal("an expired key is not a limit: retrying would never help")
 	}
 }
 

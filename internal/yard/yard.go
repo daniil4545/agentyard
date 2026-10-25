@@ -5,6 +5,7 @@ package yard
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -47,6 +48,8 @@ type Yard struct {
 	Agents Runner
 	State  *state.Store
 	Log    *slog.Logger
+	// Clock replaces time.Now in tests.
+	Clock func() time.Time
 }
 
 const leftoverMessage = "chore: commit changes the agent left uncommitted"
@@ -79,7 +82,7 @@ func (y *Yard) Pass(ctx context.Context) {
 
 func (y *Yard) passRepo(ctx context.Context, repo config.Repo) error {
 	for _, t := range y.State.Tasks {
-		if t.Repo == repo.Name && t.Status == state.Review {
+		if t.Repo == repo.Name && t.Status == state.Review && !y.paused(t.Agent) {
 			if err := y.followPR(ctx, repo, t); err != nil {
 				y.Log.Error("follow pr failed", "task", state.Key(t.Repo, t.Issue), "pr", t.PR, "err", err)
 			}
@@ -91,9 +94,13 @@ func (y *Yard) passRepo(ctx context.Context, repo config.Repo) error {
 	}
 	for _, issue := range issues {
 		t := y.State.Tasks[state.Key(repo.Name, issue.Number)]
+		name := y.agentFor(repo, issue)
+		if t != nil {
+			name = t.Agent
+		}
 		var err error
 		switch {
-		case issue.HasLabel(y.label(state.Failed)), issue.HasLabel(y.label(state.Done)):
+		case issue.HasLabel(y.label(state.Failed)), issue.HasLabel(y.label(state.Done)), y.paused(name):
 			continue
 		case t != nil && t.Status == state.Review:
 			continue
@@ -103,7 +110,7 @@ func (y *Yard) passRepo(ctx context.Context, repo config.Repo) error {
 			// a failed or interrupted run on an open PR: the next pass follows the PR again
 			err = y.setStatus(ctx, t, state.Review)
 		default:
-			// new, failed and then unlabeled by the owner, or cut short by a restart
+			// new, failed and then unlabeled by the owner, paused, or cut short by a restart
 			err = y.start(ctx, repo, issue)
 		}
 		if err != nil {
@@ -121,6 +128,10 @@ func (y *Yard) start(ctx context.Context, repo config.Repo, issue github.Issue) 
 		Agent:  y.agentFor(repo, issue),
 		Branch: branchName(issue),
 		Since:  issue.Created,
+	}
+	if prev := y.State.Tasks[state.Key(t.Repo, t.Issue)]; prev != nil {
+		t.Status = prev.Status // so the old status label goes away
+		t.PauseNoted = prev.PauseNoted
 	}
 	y.State.Tasks[state.Key(t.Repo, t.Issue)] = t
 	if err := y.setStatus(ctx, t, state.Working); err != nil {
@@ -191,6 +202,9 @@ func (y *Yard) work(ctx context.Context, repo config.Repo, t *state.Task, prompt
 		return y.fail(ctx, t, err)
 	}
 	res, err := y.runAgent(ctx, t, dir, prompt, repo)
+	if limit, ok := errors.AsType[*agent.LimitError](err); ok {
+		return y.pause(ctx, t, limit)
+	}
 	if err != nil {
 		return y.fail(ctx, t, err)
 	}
@@ -252,7 +266,8 @@ func (y *Yard) runAgent(ctx context.Context, t *state.Task, dir, prompt string, 
 	started := time.Now()
 	y.Log.Info("agent started", "task", key, "agent", t.Agent, "session", t.Session)
 	res, err := y.Agents.Run(runCtx, t.Agent, req)
-	if err != nil && t.Session != "" && ctx.Err() == nil {
+	_, limited := errors.AsType[*agent.LimitError](err)
+	if err != nil && !limited && t.Session != "" && ctx.Err() == nil {
 		y.Log.Warn("resume failed, starting a new session", "task", key, "err", err)
 		req.Session = ""
 		req.Prompt = rules + "\n\n" + restartPrompt(repo, t) + "\n\n" + prompt
@@ -289,6 +304,9 @@ func (y *Yard) fail(ctx context.Context, t *state.Task, cause error) error {
 func (y *Yard) setStatus(ctx context.Context, t *state.Task, status state.Status) error {
 	prev := t.Status
 	t.Status = status
+	if status == state.Review || status == state.Blocked {
+		t.PauseNoted = false
+	}
 	if err := y.State.Save(); err != nil {
 		return fmt.Errorf("save state: %w", err)
 	}

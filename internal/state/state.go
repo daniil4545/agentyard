@@ -18,6 +18,7 @@ const (
 	Working Status = "working"
 	Review  Status = "pr"
 	Blocked Status = "blocked"
+	Paused  Status = "paused"
 	Failed  Status = "failed"
 	Done    Status = "done"
 )
@@ -31,6 +32,8 @@ type Task struct {
 	Session string `json:"session,omitempty"`
 	Branch  string `json:"branch"`
 	Status  Status `json:"status"`
+	// PauseNoted is set once the issue was told about a limit, until a run gets through.
+	PauseNoted bool `json:"pause_noted,omitempty"`
 	// Since is the creation time of the newest owner note already given to the agent.
 	Since time.Time `json:"since"`
 }
@@ -38,6 +41,8 @@ type Task struct {
 type Store struct {
 	path  string
 	Tasks map[string]*Task `json:"tasks"`
+	// Paused holds, per agent, the time until which its plan is used up.
+	Paused map[string]time.Time `json:"paused,omitempty"`
 }
 
 func Key(repo string, issue int) string {
@@ -46,7 +51,7 @@ func Key(repo string, issue int) string {
 
 // Load reads the file; a missing file is an empty store.
 func Load(path string) (*Store, error) {
-	s := &Store{path: path, Tasks: map[string]*Task{}}
+	s := &Store{path: path, Tasks: map[string]*Task{}, Paused: map[string]time.Time{}}
 	raw, err := os.ReadFile(path) //nolint:gosec // the path comes from the operator's config
 	if errors.Is(err, os.ErrNotExist) {
 		return s, nil
@@ -56,6 +61,9 @@ func Load(path string) (*Store, error) {
 	}
 	if err := json.Unmarshal(raw, s); err != nil {
 		return nil, fmt.Errorf("state %s: %w", path, err)
+	}
+	if s.Paused == nil {
+		s.Paused = map[string]time.Time{}
 	}
 	return s, nil
 }

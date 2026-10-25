@@ -284,6 +284,40 @@ func TestFailureLabelsAndRetry(t *testing.T) {
 	}
 }
 
+// spec: S11
+func TestLimitPausesAgentAndRetries(t *testing.T) {
+	gh := newGitHub(issue(9, "First"), issue(10, "Second"))
+	y, _, agents := newYard(t, gh)
+	now := t0
+	y.Clock = func() time.Time { return now }
+	y.Config.LimitPause = time.Hour
+	agents.next = func(agent.Request) (int, string, error) {
+		return 0, "", &agent.LimitError{Agent: config.OpenCode, Message: "Free usage exceeded"}
+	}
+
+	y.Pass(context.Background())
+	if len(agents.calls) != 1 {
+		t.Fatalf("the second issue must wait while the agent rests, calls = %d", len(agents.calls))
+	}
+	if !slices.Equal(gh.labels[9], []string{"agent:paused"}) || len(gh.comments[9]) != 1 ||
+		!strings.Contains(gh.comments[9][0], "2026-10-25 11:00") {
+		t.Fatalf("labels = %v, comments = %q", gh.labels[9], gh.comments[9])
+	}
+
+	now = t0.Add(61 * time.Minute)
+	y.Pass(context.Background())
+	if len(gh.comments[9]) != 1 {
+		t.Fatalf("a repeated limit must not comment again: %q", gh.comments[9])
+	}
+
+	now = t0.Add(3 * time.Hour)
+	agents.next = func(agent.Request) (int, string, error) { return 1, "done", nil }
+	y.Pass(context.Background())
+	if len(gh.created) != 2 || slices.Contains(gh.labels[9], "agent:paused") {
+		t.Fatalf("after the pause both issues must run: created %d, labels %v", len(gh.created), gh.labels[9])
+	}
+}
+
 // spec: S10
 func TestStopIsNotAFailure(t *testing.T) {
 	gh := newGitHub(issue(8, "Interrupted"))

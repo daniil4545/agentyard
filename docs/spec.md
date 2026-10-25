@@ -96,6 +96,7 @@ the pause end of each agent.
 | `internal/agent` | the three CLIs behind one call: prompt and session in, session and final message out |
 | `internal/state` | `state.json`, written through a temporary file |
 | `internal/yard` | the pass, state changes, prompts |
+| `internal/panel` | read-only admin page on `panel` (default `:8080`): health, tasks from `state.json`, last log lines |
 | `rules/AGENTS.md` | rules every first prompt starts with |
 
 ## 5. Agents

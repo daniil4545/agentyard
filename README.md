@@ -43,7 +43,8 @@ Requirements: Docker, a GitHub App, `envkey` or another way to pass environment 
    `base64 -i <key>.pem | envkey set AGENTYARD_APP_KEY_B64`.
 3. `cp agentyard.example.toml agentyard.toml` and list your repositories.
 4. `envkey run -- docker compose up -d --build`
-5. `docker compose logs -f` shows `agentyard started` and a pass every minute.
+5. Open http://127.0.0.1:8080: the admin panel shows the last pass, tasks with their state
+   and PR, paused agents and the latest log lines. It refreshes every 10 seconds.
 
 Optional logins:
 

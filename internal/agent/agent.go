@@ -67,7 +67,11 @@ func (c CLI) run(ctx context.Context, name, dir, stdin string, stop *regexp.Rege
 	cmd.Stdout, cmd.Stderr = &stdout, stderr
 	err := cmd.Run()
 	if stderr.hit != "" {
-		return stdout.Bytes(), &LimitError{Agent: name, Message: tail(stderr.hit)}
+		msg := stderr.hit
+		if m := logError.FindStringSubmatch(msg); m != nil {
+			msg = m[1]
+		}
+		return stdout.Bytes(), &LimitError{Agent: name, Message: tail(msg)}
 	}
 	if ctx.Err() != nil {
 		return stdout.Bytes(), fmt.Errorf("%s: %w", name, ctx.Err())
@@ -77,6 +81,9 @@ func (c CLI) run(ctx context.Context, name, dir, stdin string, stop *regexp.Rege
 	}
 	return stdout.Bytes(), nil
 }
+
+// logError picks the error text out of a key=value log line: error.error="...".
+var logError = regexp.MustCompile(`error\.error="([^"]*)"`)
 
 // stopWatch keeps stderr and cancels the run at the first complete line matching stop.
 // exec writes stderr from one goroutine and Run waits for it, so no lock is needed.

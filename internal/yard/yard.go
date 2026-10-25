@@ -410,5 +410,8 @@ func branchName(issue github.Issue) string {
 }
 
 func footer(t *state.Task) string {
+	if t.Session == "" {
+		return fmt.Sprintf("\n\n---\n<sub>agentyard · %s</sub>", t.Agent)
+	}
 	return fmt.Sprintf("\n\n---\n<sub>agentyard · %s · session `%s`</sub>", t.Agent, t.Session)
 }

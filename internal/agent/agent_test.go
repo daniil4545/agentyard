@@ -186,8 +186,9 @@ sleep 30
 	start := time.Now()
 	cli := CLI{Commands: map[string]string{config.OpenCode: script}}
 	res, err := cli.Run(ctx, config.OpenCode, Request{Dir: dir, Prompt: "p"})
-	if _, ok := errors.AsType[*LimitError](err); !ok {
-		t.Fatalf("err = %v, want a limit error", err)
+	limit, ok := errors.AsType[*LimitError](err)
+	if !ok || limit.Message != "AI_APICallError: Free usage limit reached." {
+		t.Fatalf("err = %v, want a limit error with only the error text of the log line", err)
 	}
 	if took := time.Since(start); took > 10*time.Second {
 		t.Fatalf("run took %s: it waited for the CLI instead of ending at the log line", took)

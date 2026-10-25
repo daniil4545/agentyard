@@ -269,6 +269,11 @@ func (y *Yard) runAgent(ctx context.Context, t *state.Task, dir, prompt string, 
 }
 
 func (y *Yard) fail(ctx context.Context, t *state.Task, cause error) error {
+	if ctx.Err() != nil {
+		// the runner is stopping: the task stays as it is and restarts on the next start
+		y.Log.Warn("run interrupted", "task", state.Key(t.Repo, t.Issue), "err", cause)
+		return cause
+	}
 	msg := fmt.Sprintf("agentyard could not finish this run: %s\n\nRemove the `%s` label to try again.%s",
 		cause, y.label(state.Failed), footer(t))
 	if err := y.GitHub.Comment(ctx, t.Repo, t.Issue, msg); err != nil {

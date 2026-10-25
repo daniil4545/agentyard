@@ -284,6 +284,27 @@ func TestFailureLabelsAndRetry(t *testing.T) {
 	}
 }
 
+// spec: S10
+func TestStopIsNotAFailure(t *testing.T) {
+	gh := newGitHub(issue(8, "Interrupted"))
+	y, _, agents := newYard(t, gh)
+	ctx, cancel := context.WithCancel(context.Background())
+	agents.next = func(agent.Request) (int, string, error) {
+		cancel()
+		return 0, "", context.Canceled
+	}
+	y.Pass(ctx)
+	if slices.Contains(gh.labels[8], "agent:failed") || len(gh.comments[8]) != 0 {
+		t.Fatalf("a stop must leave no failure: labels %v, comments %q", gh.labels[8], gh.comments[8])
+	}
+
+	agents.next = func(agent.Request) (int, string, error) { return 1, "done after restart", nil }
+	y.Pass(context.Background())
+	if len(gh.created) != 1 {
+		t.Fatal("the interrupted issue must restart on the next pass")
+	}
+}
+
 func TestLeftoverChangesAreCommitted(t *testing.T) {
 	gh := newGitHub(issue(5, "Docs"))
 	y, work, agents := newYard(t, gh)

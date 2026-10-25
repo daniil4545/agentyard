@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -25,7 +26,7 @@ func (c CLI) claude(ctx context.Context, req Request) (Result, error) {
 	if req.Session != "" {
 		args = append(args, "--resume", req.Session)
 	}
-	out, err := c.run(ctx, config.Claude, req.Dir, req.Prompt, args...)
+	out, err := c.run(ctx, config.Claude, req.Dir, req.Prompt, nil, args...)
 	return settle(config.Claude, out, err, parseClaude)
 }
 
@@ -69,7 +70,7 @@ func (c CLI) codex(ctx context.Context, req Request) (Result, error) {
 		args = append(args, "--model", req.Model)
 	}
 	args = append(args, "-")
-	out, err := c.run(ctx, config.Codex, req.Dir, req.Prompt, args...)
+	out, err := c.run(ctx, config.Codex, req.Dir, req.Prompt, nil, args...)
 	text, _ := os.ReadFile(last) //nolint:gosec // our own temp file; a missing file means no final message
 	return settle(config.Codex, out, err, func(out []byte) (Result, error) {
 		return parseCodex(out, string(text), req.Session)
@@ -114,9 +115,10 @@ func parseCodex(out []byte, last, session string) (Result, error) {
 }
 
 // opencode: `opencode run --format json` prints JSONL events with the session id; the final
-// message is the text parts of the last assistant message.
+// message is the text parts of the last assistant message. Its error log goes to stderr: on a
+// used-up free tier the CLI logs the error and then waits silently instead of exiting.
 func (c CLI) opencode(ctx context.Context, req Request) (Result, error) {
-	args := []string{"run", "--format", "json"}
+	args := []string{"run", "--format", "json", "--print-logs", "--log-level", "ERROR"}
 	if req.Model != "" {
 		args = append(args, "--model", req.Model)
 	}
@@ -124,7 +126,7 @@ func (c CLI) opencode(ctx context.Context, req Request) (Result, error) {
 		args = append(args, "--session", req.Session)
 	}
 	args = append(args, req.Prompt)
-	out, err := c.run(ctx, config.OpenCode, req.Dir, "", args...)
+	out, err := c.run(ctx, config.OpenCode, req.Dir, "", openCodeLimitLog, args...)
 	return settle(config.OpenCode, out, err, parseOpenCode)
 }
 
@@ -187,12 +189,19 @@ func (e openCodeError) err() error {
 	return fmt.Errorf("opencode: %s", tail(e.Message))
 }
 
+// openCodeLimitLog matches the live log line of a used-up free tier:
+// `AI_APICallError: Free usage limit reached`.
+var openCodeLimitLog = regexp.MustCompile(`(?i)free usage (limit|exceeded)|FreeUsageLimitError`)
+
 // settle picks the error that tells the most: a limit reported in the output or in the
 // CLI's error text, then the CLI failure, then the parse result.
 func settle(name string, out []byte, runErr error, parse func([]byte) (Result, error)) (Result, error) {
 	res, err := parse(out)
 	if _, ok := errors.AsType[*LimitError](err); ok {
 		return res, err
+	}
+	if _, ok := errors.AsType[*LimitError](runErr); ok {
+		return res, runErr
 	}
 	if runErr != nil {
 		if isLimit(runErr.Error()) {

@@ -56,6 +56,14 @@ type Yard struct {
 
 const leftoverMessage = "chore: commit changes the agent left uncommitted"
 
+const maxNudges = 2
+
+var (
+	// questions is how the rules make an agent ask: a Markdown heading "Questions".
+	questions  = regexp.MustCompile(`(?mi)^#+\s*questions\b`)
+	errStopped = errors.New("the agent stopped without a result twice after a nudge: no commits and no questions")
+)
+
 // Run makes a pass every interval until the context ends.
 func (y *Yard) Run(ctx context.Context) {
 	ticker := time.NewTicker(y.Config.Interval)
@@ -206,7 +214,7 @@ func (y *Yard) work(ctx context.Context, repo config.Repo, t *state.Task, prompt
 	if err != nil {
 		return y.fail(ctx, t, err)
 	}
-	res, err := y.runAgent(ctx, t, dir, prompt, repo)
+	res, head, err := y.runToResult(ctx, t, dir, prompt, headBefore, repo)
 	if limit, ok := errors.AsType[*agent.LimitError](err); ok {
 		return y.pause(ctx, t, limit)
 	}
@@ -217,13 +225,6 @@ func (y *Yard) work(ctx context.Context, repo config.Repo, t *state.Task, prompt
 		if n.Created.After(t.Since) {
 			t.Since = n.Created
 		}
-	}
-	if _, err := y.Work.CommitLeftovers(ctx, dir, leftoverMessage); err != nil {
-		return y.fail(ctx, t, err)
-	}
-	head, err := y.Work.Head(ctx, dir)
-	if err != nil {
-		return y.fail(ctx, t, err)
 	}
 	ahead, err := y.Work.Ahead(ctx, dir, repo.Base)
 	if err != nil {
@@ -255,6 +256,33 @@ func (y *Yard) work(ctx context.Context, repo config.Repo, t *state.Task, prompt
 			return y.fail(ctx, t, err)
 		}
 		return y.setStatus(ctx, t, state.Blocked)
+	}
+}
+
+// runToResult runs the agent and commits what it left. Before a pull request exists, a run with
+// no commits and no questions gets the same session back up to maxNudges times: small models
+// often end their turn mid-task.
+func (y *Yard) runToResult(ctx context.Context, t *state.Task, dir, prompt, headBefore string, repo config.Repo) (agent.Result, string, error) {
+	for nudge := 0; ; nudge++ {
+		res, err := y.runAgent(ctx, t, dir, prompt, repo)
+		if err != nil {
+			return res, "", err
+		}
+		if _, err := y.Work.CommitLeftovers(ctx, dir, leftoverMessage); err != nil {
+			return res, "", fmt.Errorf("commit leftovers: %w", err)
+		}
+		head, err := y.Work.Head(ctx, dir)
+		if err != nil {
+			return res, "", fmt.Errorf("read head: %w", err)
+		}
+		if t.PR != 0 || head != headBefore || questions.MatchString(res.Text) {
+			return res, head, nil
+		}
+		if nudge == maxNudges {
+			return res, "", errStopped
+		}
+		y.Log.Info("agent stopped without a result, nudging", "task", state.Key(t.Repo, t.Issue), "nudge", nudge+1)
+		prompt = nudgePrompt
 	}
 }
 

@@ -166,6 +166,40 @@ echo '{"type":"result","is_error":false,"result":"ok","session_id":"c-9"}'
 	}
 }
 
+// spec: S11. On a used-up free tier OpenCode logs the error and waits silently for hours;
+// the run must end at the log line, not at the task timeout.
+func TestOpenCodeLimitInLogEndsWaitingRun(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "fake")
+	body := `#!/bin/sh
+echo "$@" > args.txt
+echo '{"type":"step_start","sessionID":"s-1"}'
+echo 'level=ERROR message="stream error" error.error="AI_APICallError: Free usage limit reached."' >&2
+sleep 30
+`
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	cli := CLI{Commands: map[string]string{config.OpenCode: script}}
+	res, err := cli.Run(ctx, config.OpenCode, Request{Dir: dir, Prompt: "p"})
+	if _, ok := errors.AsType[*LimitError](err); !ok {
+		t.Fatalf("err = %v, want a limit error", err)
+	}
+	if took := time.Since(start); took > 10*time.Second {
+		t.Fatalf("run took %s: it waited for the CLI instead of ending at the log line", took)
+	}
+	if res.Session != "s-1" {
+		t.Fatalf("session = %q, want s-1 to resume after the pause", res.Session)
+	}
+	if args := string(readAt(t, dir, "args.txt")); !strings.Contains(args, "--print-logs") {
+		t.Fatalf("args = %q, want --print-logs", args)
+	}
+}
+
 func readAt(t *testing.T, dir, name string) []byte {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(dir, name))

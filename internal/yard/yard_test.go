@@ -227,6 +227,50 @@ func TestQuestionWithoutCommitsThenAnswer(t *testing.T) {
 	}
 }
 
+// spec: S12. An agent that stops with no commits and no questions gets its session back.
+func TestStoppedAgentIsNudgedToFinish(t *testing.T) {
+	gh := newGitHub(issue(8, "Add cache"))
+	y, _, agents := newYard(t, gh)
+	replies := []string{"Let me look at the file format.", "Now the tests.", "## Summary\ncache added"}
+	agents.next = func(agent.Request) (int, string, error) {
+		reply := replies[len(agents.calls)-1]
+		if len(agents.calls) == 3 {
+			return 1, reply, nil
+		}
+		return 0, reply, nil
+	}
+
+	y.Pass(context.Background())
+	if len(agents.calls) != 3 {
+		t.Fatalf("calls = %d, want the first run and 2 nudges", len(agents.calls))
+	}
+	nudge := agents.calls[1].req
+	if nudge.Session != "ses-1" || !strings.Contains(nudge.Prompt, "## Questions") {
+		t.Fatalf("nudge request = %+v, want the same session and the way to finish", nudge)
+	}
+	if len(gh.created) != 1 || len(gh.comments[8]) != 0 {
+		t.Fatalf("created = %d, comments = %q: half-sentences must not reach the issue", len(gh.created), gh.comments[8])
+	}
+}
+
+// spec: S12. After 2 nudges without a result the task fails, it is not taken for a question.
+func TestStoppedAgentFailsAfterTwoNudges(t *testing.T) {
+	gh := newGitHub(issue(9, "Add cache"))
+	y, _, agents := newYard(t, gh)
+	agents.next = func(agent.Request) (int, string, error) { return 0, "Let me look around.", nil }
+
+	y.Pass(context.Background())
+	if len(agents.calls) != 3 {
+		t.Fatalf("calls = %d, want 3", len(agents.calls))
+	}
+	if !slices.Equal(gh.labels[9], []string{"agent:failed"}) {
+		t.Fatalf("labels = %v, want agent:failed", gh.labels[9])
+	}
+	if len(gh.comments[9]) != 1 || !strings.Contains(gh.comments[9][0], "stopped without a result") {
+		t.Fatalf("comments = %q", gh.comments[9])
+	}
+}
+
 func TestReviewNotesGoBackToSession(t *testing.T) {
 	gh := newGitHub(issue(3, "Fix crash"))
 	y, work, agents := newYard(t, gh)

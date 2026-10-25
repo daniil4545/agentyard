@@ -57,6 +57,8 @@ One pass, per repository:
 4. After a run: changes the agent left uncommitted are committed by the runner; new commits
    are pushed; the final message becomes the PR description (first PR), a reply on the PR,
    or a comment on the issue when there are no commits (state `blocked`).
+5. Before a PR exists, a run with no commits and no `## Questions` heading is unfinished: the
+   runner sends the same session a nudge, up to 2 times, then the task fails.
 
 ## 3. States
 
@@ -71,7 +73,7 @@ stateDiagram-v2
   pr --> working: owner notes on PR or issue
   working --> paused: plan or free tier used up
   paused --> working: pause over
-  working --> failed: CLI error or timeout
+  working --> failed: CLI error, timeout, stopped after 2 nudges
   failed --> working: owner removed agent:failed
   pr --> done: PR merged or closed
 ```
@@ -137,7 +139,8 @@ What the runner does not do on any input:
 | S8 | resume fails (session lost) | new session with rules and task summary |
 | S9 | agent leaves changes uncommitted | runner commits them, they reach the PR |
 | S10 | container stops mid-run | no failure is recorded; the task restarts on the next start |
-| S11 | agent reports a used-up plan | label `agent:paused`, one comment with the retry time, automatic retry |
+| S11 | agent reports a used-up plan, also only in the OpenCode error log while the CLI waits | label `agent:paused`, one comment with the retry time, automatic retry |
+| S12 | agent ends its turn with no commits and no questions | same session nudged up to 2 times; still nothing - `agent:failed` with a comment |
 
 ## 8. Decisions
 

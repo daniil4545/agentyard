@@ -1,0 +1,5 @@
+.env
+.env.*
+/agentyard.toml
+/agentyard
+.worktrees/

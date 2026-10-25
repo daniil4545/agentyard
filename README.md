@@ -19,8 +19,17 @@ GitHub App bot work; the owner merges by hand. Design and scenarios: `docs/spec.
 5. If the issue lacks something, the agent asks on the issue (`agent:blocked`) and continues
    after your answer.
 
-Issue labels show the state: `agent:working`, `agent:pr`, `agent:blocked`, `agent:failed`,
-`agent:done`. Remove `agent:failed` to retry.
+Issue labels show the state:
+
+| Label | Meaning | Your move |
+|---|---|---|
+| `agent` alone | queued | none |
+| `agent:working` | the agent runs | none |
+| `agent:pr` | PR open | review it |
+| `agent:blocked` | the agent asked a question on the issue | answer in a comment |
+| `agent:paused` | the agent's plan or free tier ran out; retry time is in a comment | none, it retries itself |
+| `agent:failed` | the run broke; the cause is in a comment | remove the label to retry |
+| `agent:done` | PR merged or closed | none |
 
 ## Quick start
 

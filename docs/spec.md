@@ -69,13 +69,22 @@ stateDiagram-v2
   working --> blocked: no commits, question on the issue
   blocked --> working: owner answered
   pr --> working: owner notes on PR or issue
+  working --> paused: plan or free tier used up
+  paused --> working: pause over
   working --> failed: CLI error or timeout
   failed --> working: owner removed agent:failed
   pr --> done: PR merged or closed
 ```
 
+A used-up plan is not a failure: the runner rests that agent until the time the provider
+named, else for `limit_pause` (1 hour), comments once on the issue with the retry time and
+retries by itself. While an agent rests, its other issues wait in the queue without comments.
+Limits of the free OpenCode Zen models are not published (checked 2026-10-25); a used-up free
+tier answers HTTP 429 `FreeUsageLimitError`, error type `provider.free-limit`.
+
 `state.json` on the work volume keeps what GitHub does not: agent, session, branch, PR
-number and `since`, the creation time of the newest owner note already given to the agent.
+number, `since` (the creation time of the newest owner note already given to the agent) and
+the pause end of each agent.
 
 ## 4. Parts
 
@@ -126,7 +135,8 @@ What the runner does not do on any input:
 | S7 | agent CLI fails | comment with the cause, label `agent:failed`; removing the label retries |
 | S8 | resume fails (session lost) | new session with rules and task summary |
 | S9 | agent leaves changes uncommitted | runner commits them, they reach the PR |
-| S10 | container restarts mid-run | task restarts from labels and `state.json` |
+| S10 | container stops mid-run | no failure is recorded; the task restarts on the next start |
+| S11 | agent reports a used-up plan | label `agent:paused`, one comment with the retry time, automatic retry |
 
 ## 8. Decisions
 

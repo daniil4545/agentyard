@@ -4,6 +4,7 @@ package panel
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -84,20 +85,26 @@ type Panel struct {
 }
 
 type row struct {
-	Key, Repo, Title, Status, Agent string
-	Issue, PR                       int
+	Key, Repo, Title, Status, Agent, Age string
+	Issue, PR                            int
+	updated                              time.Time
+}
+
+type count struct {
+	Status string
+	N      int
 }
 
 type page struct {
 	Bot, Uptime, LastPass string
-	Counts                map[string]int
+	Counts                []count
 	Paused                map[string]string
 	Rows                  []row
 	Log                   []string
 }
 
-// statusOrder puts what needs the owner first.
-var statusOrder = []state.Status{state.Blocked, state.Failed, state.Review, state.Working, state.Paused, state.Done}
+// statusOrder is the board from left to right: running, waiting, needs the owner, review, done.
+var statusOrder = []state.Status{state.Working, state.Paused, state.Blocked, state.Failed, state.Review, state.Done}
 
 func (p *Panel) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	store, err := state.Load(p.StatePath)
@@ -112,7 +119,6 @@ func (p *Panel) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 		Bot:      p.Bot,
 		Uptime:   now.Sub(started).Round(time.Minute).String(),
 		LastPass: "not yet",
-		Counts:   map[string]int{},
 		Paused:   map[string]string{},
 		Log:      p.Log.Lines(),
 	}
@@ -124,13 +130,27 @@ func (p *Panel) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 			pg.Paused[name] = until.UTC().Format("15:04 UTC")
 		}
 	}
+	counts := map[state.Status]int{}
 	for key, t := range store.Tasks {
-		pg.Counts[string(t.Status)]++
-		pg.Rows = append(pg.Rows, row{Key: key, Repo: t.Repo, Title: t.Title, Status: string(t.Status), Agent: t.Agent, Issue: t.Issue, PR: t.PR})
+		counts[t.Status]++
+		r := row{Key: key, Repo: t.Repo, Title: t.Title, Status: string(t.Status), Agent: t.Agent, Issue: t.Issue, PR: t.PR, updated: t.Updated}
+		if !t.Updated.IsZero() {
+			r.Age = age(now.Sub(t.Updated))
+		}
+		pg.Rows = append(pg.Rows, r)
 	}
+	for _, s := range statusOrder {
+		if counts[s] > 0 {
+			pg.Counts = append(pg.Counts, count{Status: string(s), N: counts[s]})
+		}
+	}
+	// board order, then the most recent change first inside a column
 	slices.SortFunc(pg.Rows, func(a, b row) int {
 		if d := slices.Index(statusOrder, state.Status(a.Status)) - slices.Index(statusOrder, state.Status(b.Status)); d != 0 {
 			return d
+		}
+		if c := b.updated.Compare(a.updated); c != 0 {
+			return c
 		}
 		return strings.Compare(a.Key, b.Key)
 	})
@@ -139,6 +159,18 @@ func (p *Panel) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	if err := tmpl.Execute(w, pg); err != nil {
 		p.Logger.Warn("panel: render", "err", err)
 	}
+}
+
+func age(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return fmt.Sprintf("%d min ago", int(d.Minutes()))
+	case d < 48*time.Hour:
+		return fmt.Sprintf("%d h ago", int(d.Hours()))
+	}
+	return fmt.Sprintf("%d d ago", int(d.Hours()/24))
 }
 
 var tmpl = template.Must(template.New("panel").Parse(`<!doctype html>
@@ -156,11 +188,11 @@ pre{font:12px/1.4 ui-monospace,monospace;white-space:pre-wrap;word-break:break-a
 </style></head><body>
 <h1>agentyard</h1>
 <div class="mut">bot {{.Bot}} · up {{.Uptime}} · last pass {{.LastPass}}{{range $name, $until := .Paused}} · <span class="warn">{{$name}} paused until {{$until}}</span>{{end}}</div>
-<div class="mut">{{range $status, $n := .Counts}}{{$status}} {{$n}} · {{end}}</div>
+<div class="mut">{{range $i, $c := .Counts}}{{if $i}} · {{end}}{{$c.Status}} {{$c.N}}{{end}}</div>
 <h2>Tasks</h2>
 <table>{{range .Rows}}<tr>
 <td><a href="https://github.com/{{.Repo}}/issues/{{.Issue}}">{{.Key}}</a></td><td>{{.Title}}</td>
-<td>{{.Status}}</td><td class="mut">{{.Agent}}</td>
+<td>{{.Status}}</td><td class="mut">{{.Age}}</td><td class="mut">{{.Agent}}</td>
 <td>{{if .PR}}<a href="https://github.com/{{.Repo}}/pull/{{.PR}}">PR #{{.PR}}</a>{{end}}</td></tr>
 {{else}}<tr><td class="mut">no tasks yet</td></tr>{{end}}</table>
 <h2>Log, newest first</h2>

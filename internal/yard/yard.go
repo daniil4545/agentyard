@@ -309,6 +309,7 @@ func (y *Yard) fail(ctx context.Context, t *state.Task, cause error) error {
 func (y *Yard) setStatus(ctx context.Context, t *state.Task, status state.Status) error {
 	prev := t.Status
 	t.Status = status
+	t.Updated = y.now().UTC()
 	if status == state.Review || status == state.Blocked {
 		t.PauseNoted = false
 	}

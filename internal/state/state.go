@@ -32,6 +32,8 @@ type Task struct {
 	Session string `json:"session,omitempty"`
 	Branch  string `json:"branch"`
 	Status  Status `json:"status"`
+	// Updated is the time of the last status change.
+	Updated time.Time `json:"updated"`
 	// PauseNoted is set once the issue was told about a limit, until a run gets through.
 	PauseNoted bool `json:"pause_noted,omitempty"`
 	// Since is the creation time of the newest owner note already given to the agent.

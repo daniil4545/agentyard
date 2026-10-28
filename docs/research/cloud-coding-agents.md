@@ -17,10 +17,11 @@ the three closest open runners. Full reports with quotes:
 
 ## 1. Verdict
 
-Open runners with the same loop exist, so section 1 of `spec.md` ("none covers") is outdated.
-None is worth forking: no candidate combines Go, Docker, label polling, both subscriptions and
-review fixes in the same agent session. famulus already resumes both CLIs
-(`internal/agent/cli.go:27,66`); the candidates do not. famulus stays; single mechanisms are
+Open runners with the same loop exist (rechecked 2026-10-28, see `spec.md` section 1).
+None is worth forking: no candidate combines one small binary, label polling without a public
+URL, a bot identity, both subscriptions and review fixes in the same agent session. optio resumes
+both CLIs only on its local runs; AgentConnect resumes the author session but needs a webhook
+and four services. famulus stays; single mechanisms are
 borrowed. Confidence: medium, because `codex exec resume` has not been run live yet.
 
 ## 2. Hosted products

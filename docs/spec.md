@@ -32,7 +32,8 @@ Prior art rechecked on 2026-10-28 (`docs/research/cloud-coding-agents.md`). Clos
 AgentConnect (ACP, App bot, PR feedback resumes the author session, but GitHub only by webhook
 and four services), propr (label, Docker, subscriptions, but a new session per comment),
 OpenHands Agent Canvas (Claude Code and Codex over ACP, issue-to-PR automation, but the user's
-token as identity), optio and kelos (Kubernetes). None polls without a public URL, posts as a
+token as identity), optio and kelos (Kubernetes). Noctra, DevIntern and Shikumi claim polling
+with both CLIs, checked from READMEs only. None found polls without a public URL, posts as a
 bot and resumes the same session in one small binary; that is why famulus stays its own.
 
 ## 2. Flow

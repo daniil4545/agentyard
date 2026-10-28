@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/agent"
-	"github.com/daniil4545/agentyard/internal/config"
-	"github.com/daniil4545/agentyard/internal/github"
-	"github.com/daniil4545/agentyard/internal/state"
+	"github.com/daniil4545/famulus/internal/agent"
+	"github.com/daniil4545/famulus/internal/config"
+	"github.com/daniil4545/famulus/internal/github"
+	"github.com/daniil4545/famulus/internal/state"
 )
 
 type GitHub interface {
@@ -326,7 +326,7 @@ func (y *Yard) fail(ctx context.Context, t *state.Task, cause error) error {
 		y.Log.Warn("run interrupted", "task", state.Key(t.Repo, t.Issue), "err", cause)
 		return cause
 	}
-	msg := fmt.Sprintf("agentyard could not finish this run: %s\n\nRemove the `%s` label to try again.%s",
+	msg := fmt.Sprintf("famulus could not finish this run: %s\n\nRemove the `%s` label to try again.%s",
 		cause, y.label(state.Failed), footer(t))
 	if err := y.GitHub.Comment(ctx, t.Repo, t.Issue, msg); err != nil {
 		y.Log.Warn("failure comment", "task", state.Key(t.Repo, t.Issue), "err", err)
@@ -415,7 +415,7 @@ func branchName(issue github.Issue) string {
 
 func footer(t *state.Task) string {
 	if t.Session == "" {
-		return fmt.Sprintf("\n\n---\n<sub>agentyard · %s</sub>", t.Agent)
+		return fmt.Sprintf("\n\n---\n<sub>famulus · %s</sub>", t.Agent)
 	}
-	return fmt.Sprintf("\n\n---\n<sub>agentyard · %s · session `%s`</sub>", t.Agent, t.Session)
+	return fmt.Sprintf("\n\n---\n<sub>famulus · %s · session `%s`</sub>", t.Agent, t.Session)
 }

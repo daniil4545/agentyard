@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/agent"
-	"github.com/daniil4545/agentyard/internal/state"
+	"github.com/daniil4545/famulus/internal/agent"
+	"github.com/daniil4545/famulus/internal/state"
 )
 
 // pause rests the agent until its plan is back and parks the task; the issue gets one comment
@@ -21,7 +21,7 @@ func (y *Yard) pause(ctx context.Context, t *state.Task, limit *agent.LimitError
 	y.Log.Warn("agent paused", "task", state.Key(t.Repo, t.Issue), "agent", t.Agent, "until", until, "err", limit.Message)
 	if !t.PauseNoted {
 		t.PauseNoted = true
-		msg := fmt.Sprintf("agentyard could not run %s: its limit is reached (%s).\n\nThe runner retries by itself after %s UTC; nothing to do.%s",
+		msg := fmt.Sprintf("famulus could not run %s: its limit is reached (%s).\n\nThe runner retries by itself after %s UTC; nothing to do.%s",
 			t.Agent, limit.Message, until.Format("2006-01-02 15:04"), footer(t))
 		if err := y.GitHub.Comment(ctx, t.Repo, t.Issue, msg); err != nil {
 			y.Log.Warn("pause comment", "task", state.Key(t.Repo, t.Issue), "err", err)

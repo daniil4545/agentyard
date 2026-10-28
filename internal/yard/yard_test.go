@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/agent"
-	"github.com/daniil4545/agentyard/internal/config"
-	"github.com/daniil4545/agentyard/internal/github"
-	"github.com/daniil4545/agentyard/internal/state"
+	"github.com/daniil4545/famulus/internal/agent"
+	"github.com/daniil4545/famulus/internal/config"
+	"github.com/daniil4545/famulus/internal/github"
+	"github.com/daniil4545/famulus/internal/state"
 )
 
 var t0 = time.Date(2026, 10, 25, 10, 0, 0, 0, time.UTC)

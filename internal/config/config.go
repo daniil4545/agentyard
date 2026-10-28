@@ -1,4 +1,4 @@
-// Package config reads agentyard.toml: whose word counts, which repositories to watch and
+// Package config reads famulus.toml: whose word counts, which repositories to watch and
 // which agent works on them.
 package config
 

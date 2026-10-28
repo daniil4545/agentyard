@@ -1,4 +1,4 @@
-# Copy to agentyard.toml next to compose.yaml.
+# Copy to famulus.toml next to compose.yaml.
 
 # GitHub login whose labels and comments the runner obeys. Nobody else's text reaches an agent.
 owner = "daniil4545"

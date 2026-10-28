@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/daniil4545/agentyard/internal/config"
-	"github.com/daniil4545/agentyard/internal/github"
-	"github.com/daniil4545/agentyard/internal/state"
-	agentrules "github.com/daniil4545/agentyard/rules"
+	"github.com/daniil4545/famulus/internal/config"
+	"github.com/daniil4545/famulus/internal/github"
+	"github.com/daniil4545/famulus/internal/state"
+	agentrules "github.com/daniil4545/famulus/rules"
 )
 
 var rules = strings.TrimSpace(agentrules.Text)

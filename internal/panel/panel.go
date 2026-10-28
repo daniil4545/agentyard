@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/state"
+	"github.com/daniil4545/famulus/internal/state"
 )
 
 // Log keeps the last lines written to it; it sits next to stdout behind the slog handler.
@@ -176,7 +176,7 @@ func age(d time.Duration) string {
 var tmpl = template.Must(template.New("panel").Parse(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="10">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>agentyard</title>
+<title>famulus</title>
 <style>
 :root{--bg:#fff;--fg:#1d1d1f;--mut:#6e6e73;--line:#e5e5ea;--warn:#b25000}
 @media (prefers-color-scheme:dark){:root{--bg:#161618;--fg:#f2f2f7;--mut:#98989d;--line:#2c2c2e;--warn:#ff9f0a}}
@@ -186,7 +186,7 @@ h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:20px 0 6px;color:var(-
 table{border-collapse:collapse;width:100%}td{border-top:1px solid var(--line);padding:5px 8px 5px 0;vertical-align:top}
 pre{font:12px/1.4 ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;margin:0}
 </style></head><body>
-<h1>agentyard</h1>
+<h1>famulus</h1>
 <div class="mut">bot {{.Bot}} · up {{.Uptime}} · last pass {{.LastPass}}{{range $name, $until := .Paused}} · <span class="warn">{{$name}} paused until {{$until}}</span>{{end}}</div>
 <div class="mut">{{range $i, $c := .Counts}}{{if $i}} · {{end}}{{$c.Status}} {{$c.N}}{{end}}</div>
 <h2>Tasks</h2>

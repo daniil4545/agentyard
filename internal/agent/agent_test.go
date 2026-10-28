@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/config"
+	"github.com/daniil4545/famulus/internal/config"
 )
 
 func readFile(t *testing.T, name string) []byte {
@@ -149,7 +149,7 @@ echo '{"type":"result","is_error":false,"result":"ok","session_id":"c-9"}'
 	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("AGENTYARD_APP_KEY_B64", "secret-key")
+	t.Setenv("FAMULUS_APP_KEY_B64", "secret-key")
 	t.Setenv("CLAUDE_CODE_OAUTH_TOKEN", "login")
 
 	cli := CLI{Commands: map[string]string{config.Claude: script}}
@@ -161,7 +161,7 @@ echo '{"type":"result","is_error":false,"result":"ok","session_id":"c-9"}'
 	if !strings.Contains(args, "--resume c-8") || !strings.Contains(args, "--model sonnet") {
 		t.Fatalf("args = %q", args)
 	}
-	if strings.Contains(env, "AGENTYARD_APP_KEY_B64") || !strings.Contains(env, "CLAUDE_CODE_OAUTH_TOKEN=login") {
+	if strings.Contains(env, "FAMULUS_APP_KEY_B64") || !strings.Contains(env, "CLAUDE_CODE_OAUTH_TOKEN=login") {
 		t.Fatal("the agent must get its CLI login and never the App key")
 	}
 }

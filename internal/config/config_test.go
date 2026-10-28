@@ -10,7 +10,7 @@ import (
 
 func load(t *testing.T, body string) (Config, error) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "agentyard.toml")
+	path := filepath.Join(t.TempDir(), "famulus.toml")
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}

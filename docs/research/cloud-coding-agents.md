@@ -19,8 +19,8 @@ the three closest open runners. Full reports with quotes:
 
 Open runners with the same loop exist, so section 1 of `spec.md` ("none covers") is outdated.
 None is worth forking: no candidate combines Go, Docker, label polling, both subscriptions and
-review fixes in the same agent session. agentyard already resumes both CLIs
-(`internal/agent/cli.go:27,66`); the candidates do not. agentyard stays; single mechanisms are
+review fixes in the same agent session. famulus already resumes both CLIs
+(`internal/agent/cli.go:27,66`); the candidates do not. famulus stays; single mechanisms are
 borrowed. Confidence: medium, because `codex exec resume` has not been run live yet.
 
 ## 2. Hosted products
@@ -60,7 +60,7 @@ claude-hub (inactive since 2025-10), Sweep (changed product).
 
 Revisions: propr `19cee49`, kelos `1485a51`, optio `f2c557d`.
 
-| Criterion | agentyard | propr | kelos | optio |
+| Criterion | famulus | propr | kelos | optio |
 |---|---|---|---|---|
 | Runtime | Docker, worktree | Docker per run, SQLite, Redis | K8s Job, cert-manager | pod per repo, Postgres, Redis |
 | Polling, no public URL | 60 s, GitHub App | 60 s, needs relay or own App | 5 min | 60 s |
@@ -118,7 +118,7 @@ Copied code keeps its Apache-2.0 or MIT notice.
 
 ## 7. Open questions
 
-- `codex exec resume` keeps the context in a container: not run live by anyone, agentyard
+- `codex exec resume` keeps the context in a container: not run live by anyone, famulus
   included.
 - Codex limit handling in propr and its `/ultrafix` code: not read.
 - Whether optio's Codex app-server works on a ChatGPT subscription: not checked.

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/config"
+	"github.com/daniil4545/famulus/internal/config"
 )
 
 // claude: `claude -p --output-format json` prints one JSON object with the result and the

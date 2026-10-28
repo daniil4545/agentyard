@@ -1,4 +1,4 @@
-// Command agentyard polls GitHub issues labeled for agents, runs a coding agent on each and
+// Command famulus polls GitHub issues labeled for agents, runs a coding agent on each and
 // opens pull requests as a GitHub App.
 package main
 
@@ -16,24 +16,24 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/agent"
-	"github.com/daniil4545/agentyard/internal/config"
-	"github.com/daniil4545/agentyard/internal/github"
-	"github.com/daniil4545/agentyard/internal/panel"
-	"github.com/daniil4545/agentyard/internal/state"
-	"github.com/daniil4545/agentyard/internal/workspace"
-	"github.com/daniil4545/agentyard/internal/yard"
+	"github.com/daniil4545/famulus/internal/agent"
+	"github.com/daniil4545/famulus/internal/config"
+	"github.com/daniil4545/famulus/internal/github"
+	"github.com/daniil4545/famulus/internal/panel"
+	"github.com/daniil4545/famulus/internal/state"
+	"github.com/daniil4545/famulus/internal/workspace"
+	"github.com/daniil4545/famulus/internal/yard"
 )
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error("agentyard stopped", "err", err)
+		slog.Error("famulus stopped", "err", err)
 		os.Exit(1)
 	}
 }
 
 func run() error {
-	configPath := flag.String("config", "agentyard.toml", "path to the config file")
+	configPath := flag.String("config", "famulus.toml", "path to the config file")
 	once := flag.Bool("once", false, "make one pass and exit")
 	flag.Parse()
 
@@ -43,13 +43,13 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
-	appID := os.Getenv("AGENTYARD_APP_ID")
+	appID := os.Getenv("FAMULUS_APP_ID")
 	if appID == "" {
-		return errors.New("AGENTYARD_APP_ID is not set")
+		return errors.New("FAMULUS_APP_ID is not set")
 	}
-	key, err := github.ParseKey(os.Getenv("AGENTYARD_APP_KEY_B64"))
+	key, err := github.ParseKey(os.Getenv("FAMULUS_APP_KEY_B64"))
 	if err != nil {
-		return fmt.Errorf("AGENTYARD_APP_KEY_B64: %w", err)
+		return fmt.Errorf("FAMULUS_APP_KEY_B64: %w", err)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -75,7 +75,7 @@ func run() error {
 		Log:    log,
 		Passed: health.Passed,
 	}
-	log.Info("agentyard started", "bot", name, "owner", cfg.Owner, "repos", len(cfg.Repos), "interval", cfg.Interval)
+	log.Info("famulus started", "bot", name, "owner", cfg.Owner, "repos", len(cfg.Repos), "interval", cfg.Interval)
 	if *once {
 		y.Pass(ctx)
 		return nil

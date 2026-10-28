@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/state"
+	"github.com/daniil4545/famulus/internal/state"
 )
 
 func TestLogKeepsLastLines(t *testing.T) {

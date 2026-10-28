@@ -1,4 +1,4 @@
-# agentyard spec
+# famulus spec
 
 Stage: MVP. The owner accepts pull requests by hand. Acceptance gates, scores and a journal
 come later (admitd vision, stage 2 "own farm").
@@ -25,11 +25,15 @@ go back to the same agent session. When the agent lacks something, it asks in a 
 
 Not: a GitHub Action, a hosted service, an auto-merger, a queue for several users.
 
-Prior art checked on 2026-10-25: anthropics/claude-code-action (no PR of its own, a workflow
-and a self-hosted runner per repository, Claude only), openai/codex-action (API key only),
-OrchestratorInc/agent-orchestrator (desktop app, tasks started by a person), marcus/nightshift
-(maintenance tasks it picks itself, no issues, no review loop), mraza007/baton (polls issues,
-no review loop). None covers polling + subscription CLIs + review loop + headless container.
+Name: famulus (a scholar's assistant), checked 2026-10-28; GitHub App `famulus-agent`, because
+the account `famulus` exists. Trademarks and domains not checked.
+
+Prior art rechecked on 2026-10-28 (`docs/research/cloud-coding-agents.md`). Close ones:
+AgentConnect (ACP, App bot, PR feedback resumes the author session, but GitHub only by webhook
+and four services), propr (label, Docker, subscriptions, but a new session per comment),
+OpenHands Agent Canvas (Claude Code and Codex over ACP, issue-to-PR automation, but the user's
+token as identity), optio and kelos (Kubernetes). None polls without a public URL, posts as a
+bot and resumes the same session in one small binary; that is why famulus stays its own.
 
 ## 2. Flow
 
@@ -94,7 +98,7 @@ pause end of each agent and the count of new issues started on the current UTC d
 
 | Part | Role |
 |---|---|
-| `internal/config` | `agentyard.toml`: owner, label, interval, timeout, agents, repositories |
+| `internal/config` | `famulus.toml`: owner, label, interval, timeout, agents, repositories |
 | `internal/github` | REST client as GitHub App: JWT, installation tokens, issues, labels, notes, PRs |
 | `internal/workspace` | one clone per repository, one worktree per issue, push without force |
 | `internal/agent` | the three CLIs behind one call: prompt and session in, session and final message out |
@@ -112,7 +116,7 @@ pause end of each agent and the count of new issues started on the current UTC d
 | Codex | `codex exec --json --dangerously-bypass-approvals-and-sandbox -o FILE -` | `codex exec resume ID` | `codex login --device-auth` once, inside the container |
 
 The container is the sandbox, so the permission bypass flags are allowed inside it. The
-agent's environment has no `AGENTYARD_*` variables: it never sees the App key and cannot
+agent's environment has no `FAMULUS_*` variables: it never sees the App key and cannot
 push. A resume that fails starts a new session with the rules and a summary of the task.
 
 ## 6. Boundaries

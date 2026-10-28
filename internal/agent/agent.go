@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/daniil4545/agentyard/internal/config"
+	"github.com/daniil4545/famulus/internal/config"
 )
 
 type Request struct {
@@ -123,7 +123,7 @@ func (w *stopWatch) String() string {
 func agentEnv(env []string) []string {
 	var kept []string
 	for _, kv := range env {
-		if !strings.HasPrefix(kv, "AGENTYARD_") {
+		if !strings.HasPrefix(kv, "FAMULUS_") {
 			kept = append(kept, kv)
 		}
 	}

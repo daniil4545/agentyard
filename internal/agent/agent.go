@@ -22,6 +22,7 @@ type Request struct {
 	Prompt  string
 	Session string
 	Model   string
+	Effort  string
 }
 
 type Result struct {

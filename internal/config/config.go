@@ -5,6 +5,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -33,6 +34,8 @@ type Config struct {
 	Panel  string            `toml:"panel"`
 	Agent  string            `toml:"agent"`
 	Models map[string]string `toml:"models"`
+	// Effort is the reasoning effort per agent; only the claude CLI takes it as a flag.
+	Effort map[string]string `toml:"effort"`
 	Repos  []Repo            `toml:"repos"`
 }
 
@@ -71,6 +74,14 @@ func (c Config) check() error {
 	}
 	if err := checkAgent(c.Agent); err != nil {
 		return err
+	}
+	for name, level := range c.Effort {
+		if name != Claude {
+			return fmt.Errorf("effort is for claude only, got %q", name)
+		}
+		if !slices.Contains([]string{"low", "medium", "high", "xhigh", "max"}, level) {
+			return fmt.Errorf("effort %q: want low, medium, high, xhigh or max", level)
+		}
 	}
 	for _, r := range c.Repos {
 		if r.Name == "" || r.Base == "" {

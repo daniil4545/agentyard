@@ -49,6 +49,8 @@ base = "main"`,
 		`unknown agent "aider"`:   "owner = \"me\"\nagent = \"aider\"\n[[repos]]\nname = \"a/b\"\nbase = \"main\"",
 		"interval":                "owner = \"me\"\ninterval = \"soon\"",
 		"daily_limit is negative": "daily_limit = -1\n" + dailyLimitBase,
+		`effort "fast"`:           "owner = \"me\"\n[effort]\nclaude = \"fast\"\n[[repos]]\nname = \"a/b\"\nbase = \"main\"",
+		"effort is for claude":    "owner = \"me\"\n[effort]\ncodex = \"high\"\n[[repos]]\nname = \"a/b\"\nbase = \"main\"",
 	}
 	for want, body := range cases {
 		if _, err := load(t, body); err == nil || !strings.Contains(err.Error(), want) {

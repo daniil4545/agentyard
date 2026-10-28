@@ -153,12 +153,12 @@ echo '{"type":"result","is_error":false,"result":"ok","session_id":"c-9"}'
 	t.Setenv("CLAUDE_CODE_OAUTH_TOKEN", "login")
 
 	cli := CLI{Commands: map[string]string{config.Claude: script}}
-	res, err := cli.Run(context.Background(), config.Claude, Request{Dir: dir, Prompt: "p", Session: "c-8", Model: "sonnet"})
+	res, err := cli.Run(context.Background(), config.Claude, Request{Dir: dir, Prompt: "p", Session: "c-8", Model: "sonnet", Effort: "medium"})
 	if err != nil || res.Session != "c-9" {
 		t.Fatalf("res = %+v, err = %v", res, err)
 	}
 	args, env := string(readAt(t, dir, "args.txt")), string(readAt(t, dir, "env.txt"))
-	if !strings.Contains(args, "--resume c-8") || !strings.Contains(args, "--model sonnet") {
+	if !strings.Contains(args, "--resume c-8") || !strings.Contains(args, "--model sonnet") || !strings.Contains(args, "--effort medium") {
 		t.Fatalf("args = %q", args)
 	}
 	if strings.Contains(env, "FAMULUS_APP_KEY_B64") || !strings.Contains(env, "CLAUDE_CODE_OAUTH_TOKEN=login") {

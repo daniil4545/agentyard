@@ -23,6 +23,9 @@ func (c CLI) claude(ctx context.Context, req Request) (Result, error) {
 	if req.Model != "" {
 		args = append(args, "--model", req.Model)
 	}
+	if req.Effort != "" {
+		args = append(args, "--effort", req.Effort)
+	}
 	if req.Session != "" {
 		args = append(args, "--resume", req.Session)
 	}

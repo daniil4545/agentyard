@@ -19,8 +19,12 @@ agent = "opencode"
 # Free OpenCode Zen model, works without a key.
 opencode = "opencode/glm-5.3-flash-free"
 # Empty means the CLI's default model.
-claude = ""
+claude = "claude-sonnet-5-5"
 codex = ""
+
+[effort]
+# Reasoning effort: low, medium, high, xhigh or max; only claude takes it. Leave the key out for the CLI's default.
+claude = "medium"
 
 [[repos]]
 name = "daniil4545/admitd-lab"

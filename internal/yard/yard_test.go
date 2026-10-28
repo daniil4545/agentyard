@@ -167,6 +167,20 @@ func issue(n int, title string) github.Issue {
 	return github.Issue{Number: n, Title: title, Body: "body of " + title, Created: t0}
 }
 
+func TestRunUsesModelAndEffortOfItsAgent(t *testing.T) {
+	gh := newGitHub(issue(1, "One"))
+	y, _, agents := newYard(t, gh)
+	y.Config.Agent = config.Claude
+	y.Config.Models = map[string]string{config.Claude: "claude-sonnet-5-5", config.Codex: "gpt"}
+	y.Config.Effort = map[string]string{config.Claude: "medium"}
+	agents.next = func(agent.Request) (int, string, error) { return 1, "done", nil }
+
+	y.Pass(context.Background())
+	if len(agents.calls) != 1 || agents.calls[0].req.Model != "claude-sonnet-5-5" || agents.calls[0].req.Effort != "medium" {
+		t.Fatalf("calls = %+v, want one claude run with model claude-sonnet-5-5 and effort medium", agents.calls)
+	}
+}
+
 func TestIssueBecomesPullRequest(t *testing.T) {
 	gh := newGitHub(issue(1, "Add --json flag"))
 	y, work, agents := newYard(t, gh)

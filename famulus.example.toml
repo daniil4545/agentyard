@@ -23,7 +23,7 @@ claude = "claude-sonnet-5-5"
 codex = ""
 
 [effort]
-# Reasoning effort: low, medium, high, xhigh or max; only claude takes it. Empty means the CLI's default.
+# Reasoning effort: low, medium, high, xhigh or max; only claude takes it. Leave the key out for the CLI's default.
 claude = "medium"
 
 [[repos]]

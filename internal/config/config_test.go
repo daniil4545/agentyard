@@ -44,10 +44,11 @@ func TestLoadRejects(t *testing.T) {
 		"owner is empty": `[[repos]]
 name = "a/b"
 base = "main"`,
-		"no repos":              `owner = "me"`,
-		"name and base":         "owner = \"me\"\n[[repos]]\nname = \"a/b\"",
-		`unknown agent "aider"`: "owner = \"me\"\nagent = \"aider\"\n[[repos]]\nname = \"a/b\"\nbase = \"main\"",
-		"interval":              "owner = \"me\"\ninterval = \"soon\"",
+		"no repos":                `owner = "me"`,
+		"name and base":           "owner = \"me\"\n[[repos]]\nname = \"a/b\"",
+		`unknown agent "aider"`:   "owner = \"me\"\nagent = \"aider\"\n[[repos]]\nname = \"a/b\"\nbase = \"main\"",
+		"interval":                "owner = \"me\"\ninterval = \"soon\"",
+		"daily_limit is negative": "daily_limit = -1\n" + dailyLimitBase,
 	}
 	for want, body := range cases {
 		if _, err := load(t, body); err == nil || !strings.Contains(err.Error(), want) {
@@ -77,12 +78,5 @@ func TestLoadDailyLimit(t *testing.T) {
 				t.Errorf("input %q: want DailyLimit %d, got %d", tc.extra, tc.want, cfg.DailyLimit)
 			}
 		})
-	}
-}
-
-func TestLoadDailyLimit_NegativeIsRejected(t *testing.T) {
-	_, err := load(t, "daily_limit = -1\n"+dailyLimitBase)
-	if err == nil || !strings.Contains(err.Error(), "daily_limit") {
-		t.Errorf("want error naming daily_limit, got %v", err)
 	}
 }

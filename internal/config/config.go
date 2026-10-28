@@ -26,7 +26,9 @@ type Config struct {
 	// LimitPause is how long an agent rests after its plan ran out, when the provider gave
 	// no time of its own.
 	LimitPause time.Duration `toml:"limit_pause"`
-	WorkDir    string        `toml:"work_dir"`
+	// DailyLimit caps new issues started per UTC day; 0 turns the cap off.
+	DailyLimit int    `toml:"daily_limit"`
+	WorkDir    string `toml:"work_dir"`
 	// Panel is the listen address of the admin page; empty turns it off.
 	Panel  string            `toml:"panel"`
 	Agent  string            `toml:"agent"`
@@ -46,6 +48,7 @@ func Load(path string) (Config, error) {
 		Interval:   time.Minute,
 		Timeout:    time.Hour,
 		LimitPause: time.Hour,
+		DailyLimit: 5,
 		WorkDir:    "/work",
 		Panel:      ":8080",
 		Agent:      OpenCode,
@@ -62,6 +65,9 @@ func (c Config) check() error {
 	}
 	if len(c.Repos) == 0 {
 		return errors.New("no repos")
+	}
+	if c.DailyLimit < 0 {
+		return errors.New("daily_limit is negative")
 	}
 	if err := checkAgent(c.Agent); err != nil {
 		return err

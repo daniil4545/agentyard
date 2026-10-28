@@ -362,6 +362,52 @@ func TestLimitPausesAgentAndRetries(t *testing.T) {
 	}
 }
 
+// spec: S13
+func TestDailyLimitHoldsNewIssuesUntilNextDay(t *testing.T) {
+	gh := newGitHub(issue(1, "One"), issue(2, "Two"), issue(3, "Three"))
+	y, _, agents := newYard(t, gh)
+	now := t0
+	y.Clock = func() time.Time { return now }
+	y.Config.DailyLimit = 2
+	agents.next = func(agent.Request) (int, string, error) { return 1, "done", nil }
+
+	y.Pass(context.Background())
+	y.Pass(context.Background())
+	if len(gh.created) != 2 || len(gh.labels[3]) != 0 {
+		t.Fatalf("limit 2 must start two issues and leave the third untouched: created %d, labels %v", len(gh.created), gh.labels[3])
+	}
+
+	gh.notes[101] = []github.Note{{Author: "owner", Body: "rename it", Created: t0.Add(time.Minute)}}
+	y.Pass(context.Background())
+	if len(agents.calls) != 3 {
+		t.Fatalf("an owner note on a PR must run past the limit, calls = %d", len(agents.calls))
+	}
+
+	now = t0.Add(24 * time.Hour)
+	y.Pass(context.Background())
+	if len(gh.created) != 3 {
+		t.Fatalf("the next day the third issue must start, created %d", len(gh.created))
+	}
+}
+
+// spec: S13
+func TestDailyLimitIgnoresRetries(t *testing.T) {
+	gh := newGitHub(issue(4, "Broken"))
+	y, _, agents := newYard(t, gh)
+	y.Config.DailyLimit = 2
+	agents.next = func(agent.Request) (int, string, error) { return 0, "", errors.New("model overloaded") }
+	y.Pass(context.Background())
+
+	gh.labels[4] = nil
+	agents.next = func(agent.Request) (int, string, error) { return 1, "ok now", nil }
+	y.Pass(context.Background())
+	gh.issues = append(gh.issues, issue(5, "Second"))
+	y.Pass(context.Background())
+	if len(gh.created) != 2 {
+		t.Fatalf("a retry must not take a daily slot: limit 2, issues 4 and 5, created %d PRs", len(gh.created))
+	}
+}
+
 // spec: S10
 func TestStopIsNotAFailure(t *testing.T) {
 	gh := newGitHub(issue(8, "Interrupted"))

@@ -119,6 +119,8 @@ func (y *Yard) passRepo(ctx context.Context, repo config.Repo) error {
 			continue
 		case t != nil && t.Status == state.Blocked:
 			err = y.followIssue(ctx, repo, t)
+		case t == nil && y.dailyFull():
+			continue
 		case t != nil && t.PR != 0:
 			// a failed or interrupted run on an open PR: the next pass follows the PR again
 			err = y.setStatus(ctx, t, state.Review)
@@ -145,6 +147,8 @@ func (y *Yard) start(ctx context.Context, repo config.Repo, issue github.Issue) 
 	if prev := y.State.Tasks[state.Key(t.Repo, t.Issue)]; prev != nil {
 		t.Status = prev.Status // so the old status label goes away
 		t.PauseNoted = prev.PauseNoted
+	} else {
+		y.countStart()
 	}
 	y.State.Tasks[state.Key(t.Repo, t.Issue)] = t
 	if err := y.setStatus(ctx, t, state.Working); err != nil {

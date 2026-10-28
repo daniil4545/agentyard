@@ -52,7 +52,9 @@ One pass, per repository:
 1. Every task in state `pr`: a merged or closed PR finishes the task (`done`, worktree
    removed). New owner notes on the PR or the issue resume the session.
 2. Open issues with the label `agent`. A new one starts: label `agent:working`, worktree from
-   the fresh base branch, first prompt = agent rules + issue + owner comments.
+   the fresh base branch, first prompt = agent rules + issue + owner comments. At most
+   `daily_limit` (default 5) new issues start per UTC day; the rest wait with the label `agent`
+   alone. Retries, answers and PR notes do not count.
 3. A `blocked` issue resumes when the owner wrote after the agent's question.
 4. After a run: changes the agent left uncommitted are committed by the runner; new commits
    are pushed; the final message becomes the PR description (first PR), a reply on the PR,
@@ -85,8 +87,8 @@ Limits of the free OpenCode Zen models are not published (checked 2026-10-25); a
 tier answers HTTP 429 `FreeUsageLimitError`, error type `provider.free-limit`.
 
 `state.json` on the work volume keeps what GitHub does not: agent, session, branch, PR
-number, `since` (the creation time of the newest owner note already given to the agent) and
-the pause end of each agent.
+number, `since` (the creation time of the newest owner note already given to the agent), the
+pause end of each agent and the count of new issues started on the current UTC day.
 
 ## 4. Parts
 
@@ -141,6 +143,7 @@ What the runner does not do on any input:
 | S10 | container stops mid-run | no failure is recorded; the task restarts on the next start |
 | S11 | agent reports a used-up plan, also only in the OpenCode error log while the CLI waits | label `agent:paused`, one comment with the retry time, automatic retry |
 | S12 | agent ends its turn with no commits and no questions | same session nudged up to 2 times; still nothing - `agent:failed` with a comment |
+| S13 | `daily_limit` new issues already started today | further new issues wait untouched until the next UTC day; owner notes on open PRs still run |
 
 ## 8. Decisions
 

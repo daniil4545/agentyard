@@ -30,6 +30,23 @@ func (y *Yard) pause(ctx context.Context, t *state.Task, limit *agent.LimitError
 	return y.setStatus(ctx, t, state.Paused)
 }
 
+// dailyFull tells whether today's cap of new issues is reached; retries and PR notes do not count.
+func (y *Yard) dailyFull() bool {
+	return y.Config.DailyLimit > 0 && y.State.StartDay == y.today() && y.State.Started >= y.Config.DailyLimit
+}
+
+func (y *Yard) countStart() {
+	if day := y.today(); y.State.StartDay != day {
+		y.State.StartDay = day
+		y.State.Started = 0
+	}
+	y.State.Started++
+}
+
+func (y *Yard) today() string {
+	return y.now().UTC().Format(time.DateOnly)
+}
+
 func (y *Yard) paused(name string) bool {
 	until, ok := y.State.Paused[name]
 	return ok && y.now().Before(until)

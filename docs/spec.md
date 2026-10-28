@@ -113,7 +113,7 @@ pause end of each agent and the count of new issues started on the current UTC d
 | Agent | New run | Resume | Login |
 |---|---|---|---|
 | OpenCode | `opencode run --format json --model M` | `--session ID` | free Zen models need none |
-| Claude Code | `claude -p --output-format json --dangerously-skip-permissions` | `--resume ID` | `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` |
+| Claude Code | `claude -p --output-format json --dangerously-skip-permissions --model M --effort E` | `--resume ID` | `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` |
 | Codex | `codex exec --json --dangerously-bypass-approvals-and-sandbox -o FILE -` | `codex exec resume ID` | `codex login --device-auth` once, inside the container |
 
 The container is the sandbox, so the permission bypass flags are allowed inside it. The

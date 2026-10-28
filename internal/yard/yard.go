@@ -294,7 +294,7 @@ func (y *Yard) runToResult(ctx context.Context, t *state.Task, dir, prompt, head
 // session store was lost, falls back to a new session with the full context.
 func (y *Yard) runAgent(ctx context.Context, t *state.Task, dir, prompt string, repo config.Repo) (agent.Result, error) {
 	key := state.Key(t.Repo, t.Issue)
-	req := agent.Request{Dir: dir, Prompt: prompt, Session: t.Session, Model: y.Config.Models[t.Agent]}
+	req := agent.Request{Dir: dir, Prompt: prompt, Session: t.Session, Model: y.Config.Models[t.Agent], Effort: y.Config.Effort[t.Agent]}
 	if t.Session == "" && !strings.HasPrefix(prompt, rules) {
 		req.Prompt = rules + "\n\n" + restartPrompt(repo, t) + "\n\n" + prompt
 	}

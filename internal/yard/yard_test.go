@@ -390,6 +390,24 @@ func TestDailyLimitHoldsNewIssuesUntilNextDay(t *testing.T) {
 	}
 }
 
+// spec: S13
+func TestDailyLimitIgnoresRetries(t *testing.T) {
+	gh := newGitHub(issue(4, "Broken"))
+	y, _, agents := newYard(t, gh)
+	y.Config.DailyLimit = 2
+	agents.next = func(agent.Request) (int, string, error) { return 0, "", errors.New("model overloaded") }
+	y.Pass(context.Background())
+
+	gh.labels[4] = nil
+	agents.next = func(agent.Request) (int, string, error) { return 1, "ok now", nil }
+	y.Pass(context.Background())
+	gh.issues = append(gh.issues, issue(5, "Second"))
+	y.Pass(context.Background())
+	if len(gh.created) != 2 {
+		t.Fatalf("a retry must not take a daily slot: limit 2, issues 4 and 5, created %d PRs", len(gh.created))
+	}
+}
+
 // spec: S10
 func TestStopIsNotAFailure(t *testing.T) {
 	gh := newGitHub(issue(8, "Interrupted"))

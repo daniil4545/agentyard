@@ -8,6 +8,7 @@ label = "agent"
 
 interval = "60s"   # pause between passes
 timeout = "60m"    # one agent run
+limit_pause = "1h" # rest after a used-up plan when the provider names no time
 work_dir = "/work" # clones, worktrees and state.json, a Docker volume
 
 # Default agent: opencode, claude or codex. An issue label agent:<name> overrides it.

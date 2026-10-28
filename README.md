@@ -19,8 +19,17 @@ GitHub App bot work; the owner merges by hand. Design and scenarios: `docs/spec.
 5. If the issue lacks something, the agent asks on the issue (`agent:blocked`) and continues
    after your answer.
 
-Issue labels show the state: `agent:working`, `agent:pr`, `agent:blocked`, `agent:failed`,
-`agent:done`. Remove `agent:failed` to retry.
+Issue labels show the state:
+
+| Label | Meaning | Your move |
+|---|---|---|
+| `agent` alone | queued | none |
+| `agent:working` | the agent runs | none |
+| `agent:pr` | PR open | review it |
+| `agent:blocked` | the agent asked a question on the issue | answer in a comment |
+| `agent:paused` | the agent's plan or free tier ran out; retry time is in a comment | none, it retries itself |
+| `agent:failed` | the run broke; the cause is in a comment | remove the label to retry |
+| `agent:done` | PR merged or closed | none |
 
 ## Quick start
 
@@ -34,7 +43,8 @@ Requirements: Docker, a GitHub App, `envkey` or another way to pass environment 
    `base64 -i <key>.pem | envkey set AGENTYARD_APP_KEY_B64`.
 3. `cp agentyard.example.toml agentyard.toml` and list your repositories.
 4. `envkey run -- docker compose up -d --build`
-5. `docker compose logs -f` shows `agentyard started` and a pass every minute.
+5. Open http://127.0.0.1:8080: the admin panel shows the last pass, tasks with their state
+   and PR, paused agents and the latest log lines. It refreshes every 10 seconds.
 
 Optional logins:
 

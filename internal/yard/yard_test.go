@@ -227,6 +227,50 @@ func TestQuestionWithoutCommitsThenAnswer(t *testing.T) {
 	}
 }
 
+// spec: S12. An agent that stops with no commits and no questions gets its session back.
+func TestStoppedAgentIsNudgedToFinish(t *testing.T) {
+	gh := newGitHub(issue(8, "Add cache"))
+	y, _, agents := newYard(t, gh)
+	replies := []string{"Let me look at the file format.", "Now the tests.", "## Summary\ncache added"}
+	agents.next = func(agent.Request) (int, string, error) {
+		reply := replies[len(agents.calls)-1]
+		if len(agents.calls) == 3 {
+			return 1, reply, nil
+		}
+		return 0, reply, nil
+	}
+
+	y.Pass(context.Background())
+	if len(agents.calls) != 3 {
+		t.Fatalf("calls = %d, want the first run and 2 nudges", len(agents.calls))
+	}
+	nudge := agents.calls[1].req
+	if nudge.Session != "ses-1" || !strings.Contains(nudge.Prompt, "## Questions") {
+		t.Fatalf("nudge request = %+v, want the same session and the way to finish", nudge)
+	}
+	if len(gh.created) != 1 || len(gh.comments[8]) != 0 {
+		t.Fatalf("created = %d, comments = %q: half-sentences must not reach the issue", len(gh.created), gh.comments[8])
+	}
+}
+
+// spec: S12. After 2 nudges without a result the task fails, it is not taken for a question.
+func TestStoppedAgentFailsAfterTwoNudges(t *testing.T) {
+	gh := newGitHub(issue(9, "Add cache"))
+	y, _, agents := newYard(t, gh)
+	agents.next = func(agent.Request) (int, string, error) { return 0, "Let me look around.", nil }
+
+	y.Pass(context.Background())
+	if len(agents.calls) != 3 {
+		t.Fatalf("calls = %d, want 3", len(agents.calls))
+	}
+	if !slices.Equal(gh.labels[9], []string{"agent:failed"}) {
+		t.Fatalf("labels = %v, want agent:failed", gh.labels[9])
+	}
+	if len(gh.comments[9]) != 1 || !strings.Contains(gh.comments[9][0], "stopped without a result") {
+		t.Fatalf("comments = %q", gh.comments[9])
+	}
+}
+
 func TestReviewNotesGoBackToSession(t *testing.T) {
 	gh := newGitHub(issue(3, "Fix crash"))
 	y, work, agents := newYard(t, gh)
@@ -281,6 +325,61 @@ func TestFailureLabelsAndRetry(t *testing.T) {
 	y.Pass(context.Background())
 	if len(gh.created) != 1 {
 		t.Fatal("removing the failed label must retry the issue")
+	}
+}
+
+// spec: S11
+func TestLimitPausesAgentAndRetries(t *testing.T) {
+	gh := newGitHub(issue(9, "First"), issue(10, "Second"))
+	y, _, agents := newYard(t, gh)
+	now := t0
+	y.Clock = func() time.Time { return now }
+	y.Config.LimitPause = time.Hour
+	agents.next = func(agent.Request) (int, string, error) {
+		return 0, "", &agent.LimitError{Agent: config.OpenCode, Message: "Free usage exceeded"}
+	}
+
+	y.Pass(context.Background())
+	if len(agents.calls) != 1 {
+		t.Fatalf("the second issue must wait while the agent rests, calls = %d", len(agents.calls))
+	}
+	if !slices.Equal(gh.labels[9], []string{"agent:paused"}) || len(gh.comments[9]) != 1 ||
+		!strings.Contains(gh.comments[9][0], "2026-10-25 11:00") {
+		t.Fatalf("labels = %v, comments = %q", gh.labels[9], gh.comments[9])
+	}
+
+	now = t0.Add(61 * time.Minute)
+	y.Pass(context.Background())
+	if len(gh.comments[9]) != 1 {
+		t.Fatalf("a repeated limit must not comment again: %q", gh.comments[9])
+	}
+
+	now = t0.Add(3 * time.Hour)
+	agents.next = func(agent.Request) (int, string, error) { return 1, "done", nil }
+	y.Pass(context.Background())
+	if len(gh.created) != 2 || slices.Contains(gh.labels[9], "agent:paused") {
+		t.Fatalf("after the pause both issues must run: created %d, labels %v", len(gh.created), gh.labels[9])
+	}
+}
+
+// spec: S10
+func TestStopIsNotAFailure(t *testing.T) {
+	gh := newGitHub(issue(8, "Interrupted"))
+	y, _, agents := newYard(t, gh)
+	ctx, cancel := context.WithCancel(context.Background())
+	agents.next = func(agent.Request) (int, string, error) {
+		cancel()
+		return 0, "", context.Canceled
+	}
+	y.Pass(ctx)
+	if slices.Contains(gh.labels[8], "agent:failed") || len(gh.comments[8]) != 0 {
+		t.Fatalf("a stop must leave no failure: labels %v, comments %q", gh.labels[8], gh.comments[8])
+	}
+
+	agents.next = func(agent.Request) (int, string, error) { return 1, "done after restart", nil }
+	y.Pass(context.Background())
+	if len(gh.created) != 1 {
+		t.Fatal("the interrupted issue must restart on the next pass")
 	}
 }
 

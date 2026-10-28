@@ -23,7 +23,7 @@ Issue labels show the state:
 
 | Label | Meaning | Your move |
 |---|---|---|
-| `agent` alone | queued | none |
+| `agent` alone | queued; at most 5 new issues start per UTC day (`daily_limit`) | none |
 | `agent:working` | the agent runs | none |
 | `agent:pr` | PR open | review it |
 | `agent:blocked` | the agent asked a question on the issue | answer in a comment |

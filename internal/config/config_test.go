@@ -55,3 +55,34 @@ base = "main"`,
 		}
 	}
 }
+
+const dailyLimitBase = "owner = \"me\"\n[[repos]]\nname = \"a/b\"\nbase = \"main\"\n"
+
+func TestLoadDailyLimit(t *testing.T) {
+	cases := map[string]struct {
+		extra string
+		want  int
+	}{
+		"missing gives default 5":  {"", 5},
+		"zero turns the cap off":   {"daily_limit = 0\n", 0},
+		"explicit value is loaded": {"daily_limit = 12\n", 12},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			cfg, err := load(t, tc.extra+dailyLimitBase)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.DailyLimit != tc.want {
+				t.Errorf("input %q: want DailyLimit %d, got %d", tc.extra, tc.want, cfg.DailyLimit)
+			}
+		})
+	}
+}
+
+func TestLoadDailyLimit_NegativeIsRejected(t *testing.T) {
+	_, err := load(t, "daily_limit = -1\n"+dailyLimitBase)
+	if err == nil || !strings.Contains(err.Error(), "daily_limit") {
+		t.Errorf("want error naming daily_limit, got %v", err)
+	}
+}
